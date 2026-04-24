@@ -69,11 +69,100 @@ function addTodo({ text, date, assignee, duration }) {
 
 function toggleTodo(id) {
   const todo = todos.find((t) => t.id === id);
-  if (todo) {
-    todo.completed = !todo.completed;
+  if (!todo) return;
+  const willComplete = !todo.completed;
+  todo.completed = willComplete;
+  saveTodos();
+  renderAll();
+  if (willComplete && !todo.proof) {
+    const li = document.querySelector(`.todo-item[data-id="${todo.id}"]`);
+    if (li) {
+      const uploadBtn = li.querySelector(".btn-upload");
+      if (uploadBtn) uploadBtn.classList.add("btn-pulse");
+    }
+  }
+}
+
+const MAX_PROOF_BYTES = 3 * 1024 * 1024;
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function attachProof(id, file) {
+  if (!file) return;
+  if (file.size > MAX_PROOF_BYTES) {
+    alert(
+      `Ukuran file terlalu besar (${formatBytes(file.size)}). Maksimum ${formatBytes(MAX_PROOF_BYTES)}.`,
+    );
+    return;
+  }
+  const todo = todos.find((t) => t.id === id);
+  if (!todo) return;
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    todo.proof = {
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      dataUrl,
+      uploadedAt: Date.now(),
+    };
     saveTodos();
     renderAll();
+  } catch (err) {
+    console.error(err);
+    alert("Gagal membaca file. Coba lagi dengan file yang lebih kecil.");
   }
+}
+
+function removeProof(id) {
+  const todo = todos.find((t) => t.id === id);
+  if (!todo || !todo.proof) return;
+  if (!confirm(`Hapus bukti "${todo.proof.name}"?`)) return;
+  todo.proof = null;
+  saveTodos();
+  renderAll();
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function openProof(todo) {
+  const w = window.open("", "_blank");
+  if (!w) {
+    alert("Browser memblokir jendela popup. Izinkan popup untuk situs ini.");
+    return;
+  }
+  const isImage = (todo.proof.type || "").startsWith("image/");
+  const safeName = escapeHtml(todo.proof.name);
+  w.document.write(`
+    <!DOCTYPE html>
+    <html><head><title>Bukti: ${safeName}</title>
+    <style>
+      body{margin:0;padding:1rem;font-family:sans-serif;background:#1a202c;color:#fff;text-align:center}
+      img{max-width:100%;max-height:90vh;border-radius:8px}
+      a.download{display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#667eea;color:#fff;text-decoration:none;border-radius:6px}
+    </style></head>
+    <body>
+      <h3>${safeName}</h3>
+      ${
+        isImage
+          ? `<img src="${todo.proof.dataUrl}" alt="${safeName}">`
+          : `<p>File: ${safeName} (${formatBytes(todo.proof.size)})</p>`
+      }
+      <div><a class="download" href="${todo.proof.dataUrl}" download="${safeName}">⬇️ Unduh</a></div>
+    </body></html>
+  `);
+  w.document.close();
 }
 
 function deleteTodo(id) {
@@ -165,6 +254,56 @@ function renderMeta(todo, query) {
     : "";
 }
 
+function renderProof(todo) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "proof-row";
+
+  if (todo.proof) {
+    const isImage = (todo.proof.type || "").startsWith("image/");
+    const view = document.createElement("button");
+    view.type = "button";
+    view.className = "proof-view";
+    view.title = `Lihat bukti: ${todo.proof.name}`;
+    view.innerHTML = isImage
+      ? `<img src="${todo.proof.dataUrl}" alt="bukti"><span>${escapeHtml(todo.proof.name)}</span>`
+      : `<span class="proof-icon">📎</span><span>${escapeHtml(todo.proof.name)}</span>`;
+    view.addEventListener("click", () => openProof(todo));
+
+    const size = document.createElement("span");
+    size.className = "proof-size";
+    size.textContent = formatBytes(todo.proof.size);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "proof-remove";
+    remove.title = "Hapus bukti";
+    remove.textContent = "✕";
+    remove.addEventListener("click", () => removeProof(todo.id));
+
+    wrapper.append(view, size, remove);
+  } else {
+    const label = document.createElement("label");
+    label.className = "btn-upload";
+    label.title = todo.completed
+      ? "Upload bukti penyelesaian"
+      : "Upload bukti (opsional)";
+    label.innerHTML = "📎 Upload Bukti";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt";
+    fileInput.hidden = true;
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) attachProof(todo.id, file);
+    });
+
+    label.appendChild(fileInput);
+    wrapper.appendChild(label);
+  }
+  return wrapper;
+}
+
 function renderTodoItem(todo, query) {
   const li = document.createElement("li");
   li.className = "todo-item" + (todo.completed ? " completed" : "");
@@ -181,6 +320,7 @@ function renderTodoItem(todo, query) {
     <span class="todo-text">${highlight(todo.text, query)}</span>
     ${renderMeta(todo, query)}
   `;
+  body.appendChild(renderProof(todo));
 
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "btn-delete";
@@ -290,6 +430,15 @@ function renderAll() {
   renderHistory();
 }
 
+function renderPrintProofCell(proof) {
+  if (!proof) return "-";
+  const isImage = (proof.type || "").startsWith("image/");
+  if (isImage) {
+    return `<img class="print-proof-img" src="${proof.dataUrl}" alt="bukti"><div class="print-proof-name">${escapeHtml(proof.name)}</div>`;
+  }
+  return `📎 ${escapeHtml(proof.name)}`;
+}
+
 function buildPrintTable(items, title) {
   const rows = items
     .map(
@@ -301,11 +450,13 @@ function buildPrintTable(items, title) {
         <td>${escapeHtml(t.date ? formatDate(t.date) : "-")}</td>
         <td>${escapeHtml(t.assignee || "-")}</td>
         <td>${escapeHtml(DURATION_LABELS[t.duration] || "-")}</td>
+        <td class="print-proof-cell">${renderPrintProofCell(t.proof)}</td>
       </tr>`,
     )
     .join("");
 
   const done = items.filter((t) => t.completed).length;
+  const withProof = items.filter((t) => t.proof).length;
   const today = new Date().toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
@@ -318,7 +469,8 @@ function buildPrintTable(items, title) {
       <p class="print-meta">
         Total: <strong>${items.length}</strong> tugas ·
         Selesai: <strong>${done}</strong> ·
-        Belum: <strong>${items.length - done}</strong><br>
+        Belum: <strong>${items.length - done}</strong> ·
+        Dengan bukti: <strong>${withProof}</strong><br>
         Dicetak: ${today}
       </p>
       <table class="print-table">
@@ -329,11 +481,12 @@ function buildPrintTable(items, title) {
             <th>Tugas</th>
             <th>Tanggal</th>
             <th>Pelaksana</th>
-            <th>Kategori Waktu</th>
+            <th>Kategori</th>
+            <th>Bukti</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="6" style="text-align:center">Tidak ada data</td></tr>'}
+          ${rows || '<tr><td colspan="7" style="text-align:center">Tidak ada data</td></tr>'}
         </tbody>
       </table>
     </div>
