@@ -9,6 +9,11 @@ const DURATION_LABELS = {
   bulanan: "Bulanan",
 };
 
+const MONTH_NAMES = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
 const form = document.getElementById("todo-form");
 const input = document.getElementById("todo-input");
 const dateInput = document.getElementById("todo-date");
@@ -19,10 +24,19 @@ const list = document.getElementById("todo-list");
 const itemsCount = document.getElementById("items-count");
 const clearCompletedBtn = document.getElementById("clear-completed");
 const filterBtns = document.querySelectorAll(".filter-btn");
+const tabBtns = document.querySelectorAll(".tab-btn");
+const tabPanels = document.querySelectorAll(".tab-panel");
+const historyMonthSelect = document.getElementById("history-month");
+const historyList = document.getElementById("history-list");
+const historySummary = document.getElementById("history-summary");
+const printListBtn = document.getElementById("print-list-btn");
+const printHistoryBtn = document.getElementById("print-history-btn");
+const printRoot = document.getElementById("print-root");
 
 let todos = loadTodos();
 let currentFilter = "all";
 let searchQuery = "";
+let selectedMonth = "";
 
 function loadTodos() {
   try {
@@ -50,7 +64,7 @@ function addTodo({ text, date, assignee, duration }) {
     createdAt: Date.now(),
   });
   saveTodos();
-  render();
+  renderAll();
 }
 
 function toggleTodo(id) {
@@ -58,20 +72,20 @@ function toggleTodo(id) {
   if (todo) {
     todo.completed = !todo.completed;
     saveTodos();
-    render();
+    renderAll();
   }
 }
 
 function deleteTodo(id) {
   todos = todos.filter((t) => t.id !== id);
   saveTodos();
-  render();
+  renderAll();
 }
 
 function clearCompleted() {
   todos = todos.filter((t) => !t.completed);
   saveTodos();
-  render();
+  renderAll();
 }
 
 function escapeHtml(str) {
@@ -97,6 +111,16 @@ function formatDate(iso) {
     month: "short",
     year: "numeric",
   });
+}
+
+function getMonthKey(todo) {
+  const iso = todo.date || new Date(todo.createdAt).toISOString().slice(0, 10);
+  return iso.slice(0, 7);
+}
+
+function formatMonthKey(key) {
+  const [y, m] = key.split("-");
+  return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
 }
 
 function getFilteredTodos() {
@@ -141,6 +165,33 @@ function renderMeta(todo, query) {
     : "";
 }
 
+function renderTodoItem(todo, query) {
+  const li = document.createElement("li");
+  li.className = "todo-item" + (todo.completed ? " completed" : "");
+  li.dataset.id = todo.id;
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = todo.completed;
+  checkbox.addEventListener("change", () => toggleTodo(todo.id));
+
+  const body = document.createElement("div");
+  body.className = "todo-body";
+  body.innerHTML = `
+    <span class="todo-text">${highlight(todo.text, query)}</span>
+    ${renderMeta(todo, query)}
+  `;
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "btn-delete";
+  deleteBtn.setAttribute("aria-label", "Hapus tugas");
+  deleteBtn.textContent = "✕";
+  deleteBtn.addEventListener("click", () => deleteTodo(todo.id));
+
+  li.append(checkbox, body, deleteBtn);
+  return li;
+}
+
 function render() {
   const filtered = getFilteredTodos();
   list.innerHTML = "";
@@ -158,36 +209,147 @@ function render() {
     list.appendChild(empty);
   } else {
     const query = searchQuery.trim();
-    filtered.forEach((todo) => {
-      const li = document.createElement("li");
-      li.className = "todo-item" + (todo.completed ? " completed" : "");
-      li.dataset.id = todo.id;
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = todo.completed;
-      checkbox.addEventListener("change", () => toggleTodo(todo.id));
-
-      const body = document.createElement("div");
-      body.className = "todo-body";
-      body.innerHTML = `
-        <span class="todo-text">${highlight(todo.text, query)}</span>
-        ${renderMeta(todo, query)}
-      `;
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "btn-delete";
-      deleteBtn.setAttribute("aria-label", "Hapus tugas");
-      deleteBtn.textContent = "✕";
-      deleteBtn.addEventListener("click", () => deleteTodo(todo.id));
-
-      li.append(checkbox, body, deleteBtn);
-      list.appendChild(li);
-    });
+    filtered.forEach((todo) => list.appendChild(renderTodoItem(todo, query)));
   }
 
   const active = todos.filter((t) => !t.completed).length;
   itemsCount.textContent = `${active} tugas aktif · ${todos.length} total`;
+}
+
+function getAvailableMonths() {
+  const set = new Set(todos.map(getMonthKey));
+  return [...set].sort().reverse();
+}
+
+function renderHistory() {
+  const months = getAvailableMonths();
+  historyMonthSelect.innerHTML = "";
+
+  if (months.length === 0) {
+    const opt = document.createElement("option");
+    opt.textContent = "Tidak ada data";
+    historyMonthSelect.appendChild(opt);
+    historyList.innerHTML =
+      '<li class="empty-state">Belum ada tugas untuk ditampilkan di histori.</li>';
+    historySummary.innerHTML = "";
+    return;
+  }
+
+  if (!months.includes(selectedMonth)) {
+    selectedMonth = months[0];
+  }
+
+  months.forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = formatMonthKey(key);
+    if (key === selectedMonth) opt.selected = true;
+    historyMonthSelect.appendChild(opt);
+  });
+
+  const monthTodos = todos
+    .filter((t) => getMonthKey(t) === selectedMonth)
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+  const done = monthTodos.filter((t) => t.completed).length;
+  const active = monthTodos.length - done;
+  const percent = monthTodos.length
+    ? Math.round((done / monthTodos.length) * 100)
+    : 0;
+
+  historySummary.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${monthTodos.length}</div>
+      <div class="stat-label">Total Tugas</div>
+    </div>
+    <div class="stat-card stat-done">
+      <div class="stat-value">${done}</div>
+      <div class="stat-label">Selesai</div>
+    </div>
+    <div class="stat-card stat-active">
+      <div class="stat-value">${active}</div>
+      <div class="stat-label">Belum Selesai</div>
+    </div>
+    <div class="stat-card stat-percent">
+      <div class="stat-value">${percent}%</div>
+      <div class="stat-label">Progress</div>
+    </div>
+  `;
+
+  historyList.innerHTML = "";
+  if (monthTodos.length === 0) {
+    historyList.innerHTML =
+      '<li class="empty-state">Tidak ada tugas di bulan ini.</li>';
+    return;
+  }
+  monthTodos.forEach((todo) => historyList.appendChild(renderTodoItem(todo, "")));
+}
+
+function renderAll() {
+  render();
+  renderHistory();
+}
+
+function buildPrintTable(items, title) {
+  const rows = items
+    .map(
+      (t, i) => `
+      <tr class="${t.completed ? "print-done" : ""}">
+        <td>${i + 1}</td>
+        <td>${t.completed ? "☑" : "☐"}</td>
+        <td>${escapeHtml(t.text)}</td>
+        <td>${escapeHtml(t.date ? formatDate(t.date) : "-")}</td>
+        <td>${escapeHtml(t.assignee || "-")}</td>
+        <td>${escapeHtml(DURATION_LABELS[t.duration] || "-")}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const done = items.filter((t) => t.completed).length;
+  const today = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  return `
+    <div class="print-sheet">
+      <h1>${escapeHtml(title)}</h1>
+      <p class="print-meta">
+        Total: <strong>${items.length}</strong> tugas ·
+        Selesai: <strong>${done}</strong> ·
+        Belum: <strong>${items.length - done}</strong><br>
+        Dicetak: ${today}
+      </p>
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Status</th>
+            <th>Tugas</th>
+            <th>Tanggal</th>
+            <th>Pelaksana</th>
+            <th>Kategori Waktu</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="6" style="text-align:center">Tidak ada data</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function printItems(items, title) {
+  printRoot.innerHTML = buildPrintTable(items, title);
+  document.body.classList.add("printing");
+  const cleanup = () => {
+    document.body.classList.remove("printing");
+    printRoot.innerHTML = "";
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(() => window.print(), 50);
 }
 
 form.addEventListener("submit", (e) => {
@@ -221,4 +383,35 @@ filterBtns.forEach((btn) => {
 
 clearCompletedBtn.addEventListener("click", clearCompleted);
 
-render();
+tabBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    tabBtns.forEach((b) => b.classList.remove("active"));
+    tabPanels.forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "history") renderHistory();
+  });
+});
+
+historyMonthSelect.addEventListener("change", (e) => {
+  selectedMonth = e.target.value;
+  renderHistory();
+});
+
+printListBtn.addEventListener("click", () => {
+  printItems(getFilteredTodos(), "Daftar Tugas");
+});
+
+printHistoryBtn.addEventListener("click", () => {
+  const monthTodos = todos
+    .filter((t) => getMonthKey(t) === selectedMonth)
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  printItems(
+    monthTodos,
+    selectedMonth
+      ? `Histori Tugas — ${formatMonthKey(selectedMonth)}`
+      : "Histori Tugas",
+  );
+});
+
+renderAll();

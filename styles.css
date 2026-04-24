@@ -18,7 +18,7 @@ body {
 .app {
   background: #fff;
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   overflow: hidden;
@@ -45,6 +45,101 @@ body {
   padding: 1.5rem;
   border-bottom: 1px solid #edf2f7;
 }
+
+.tabs {
+  display: flex;
+  background: #f7fafc;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.9rem 1rem;
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #718096;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #4a5568;
+  background: #edf2f7;
+}
+
+.tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: #fff;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #667eea;
+  color: #fff;
+}
+
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: #f7fafc;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #718096;
+  margin-top: 0.15rem;
+}
+
+.stat-done .stat-value { color: #38a169; }
+.stat-active .stat-value { color: #dd6b20; }
+.stat-percent .stat-value { color: #667eea; }
 
 .todo-form {
   display: flex;
@@ -304,5 +399,78 @@ body {
 
   .todo-item {
     padding: 0.75rem 1rem;
+  }
+
+  .history-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    background: #fff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  body.printing .app {
+    display: none !important;
+  }
+
+  body.printing .print-only {
+    display: block !important;
+  }
+
+  .print-sheet {
+    color: #000;
+    font-size: 11pt;
+  }
+
+  .print-sheet h1 {
+    font-size: 18pt;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.5rem;
+  }
+
+  .print-meta {
+    font-size: 10pt;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .print-table th {
+    background: #e2e8f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-weight: 700;
+  }
+
+  .print-table tr.print-done td {
+    color: #666;
+    text-decoration: line-through;
   }
 }

@@ -13,72 +13,99 @@
       <p class="subtitle">Kelola tugas harianmu dengan mudah</p>
     </header>
 
-    <section class="controls">
-      <form id="todo-form" class="todo-form">
-        <input
-          id="todo-input"
-          type="text"
-          placeholder="Nama tugas..."
-          autocomplete="off"
-          required
-        />
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="list" role="tab">📋 Daftar Tugas</button>
+      <button class="tab-btn" data-tab="history" role="tab">📊 Histori Bulanan</button>
+    </nav>
 
-        <div class="form-grid">
-          <label class="field">
-            <span>📅 Tanggal</span>
-            <input id="todo-date" type="date" />
-          </label>
+    <section id="tab-list" class="tab-panel active">
+      <div class="controls">
+        <form id="todo-form" class="todo-form">
+          <input
+            id="todo-input"
+            type="text"
+            placeholder="Nama tugas..."
+            autocomplete="off"
+            required
+          />
 
-          <label class="field">
-            <span>👤 Pelaksana</span>
-            <input
-              id="todo-assignee"
-              type="text"
-              placeholder="Nama pelaksana"
-              autocomplete="off"
-            />
-          </label>
+          <div class="form-grid">
+            <label class="field">
+              <span>📅 Tanggal</span>
+              <input id="todo-date" type="date" />
+            </label>
 
-          <label class="field">
-            <span>⏱️ Kategori Waktu</span>
-            <select id="todo-duration">
-              <option value="">— Pilih —</option>
-              <option value="cepat">Cepat (&lt; 30 menit)</option>
-              <option value="sedang">Sedang (30 menit – 2 jam)</option>
-              <option value="lama">Lama (&gt; 2 jam)</option>
-              <option value="harian">Harian</option>
-              <option value="mingguan">Mingguan</option>
-              <option value="bulanan">Bulanan</option>
-            </select>
-          </label>
+            <label class="field">
+              <span>👤 Pelaksana</span>
+              <input
+                id="todo-assignee"
+                type="text"
+                placeholder="Nama pelaksana"
+                autocomplete="off"
+              />
+            </label>
+
+            <label class="field">
+              <span>⏱️ Kategori Waktu</span>
+              <select id="todo-duration">
+                <option value="">— Pilih —</option>
+                <option value="cepat">Cepat (&lt; 30 menit)</option>
+                <option value="sedang">Sedang (30 menit – 2 jam)</option>
+                <option value="lama">Lama (&gt; 2 jam)</option>
+                <option value="harian">Harian</option>
+                <option value="mingguan">Mingguan</option>
+                <option value="bulanan">Bulanan</option>
+              </select>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary">Tambah Tugas</button>
+        </form>
+
+        <div class="search-bar">
+          <input
+            id="search-input"
+            type="search"
+            placeholder="🔍 Cari tugas atau pelaksana..."
+            autocomplete="off"
+          />
         </div>
 
-        <button type="submit" class="btn-primary">Tambah Tugas</button>
-      </form>
+        <div class="filters" role="tablist">
+          <button class="filter-btn active" data-filter="all">Semua</button>
+          <button class="filter-btn" data-filter="active">Aktif</button>
+          <button class="filter-btn" data-filter="completed">Selesai</button>
+        </div>
 
-      <div class="search-bar">
-        <input
-          id="search-input"
-          type="search"
-          placeholder="🔍 Cari tugas atau pelaksana..."
-          autocomplete="off"
-        />
+        <div class="actions">
+          <button id="print-list-btn" class="btn-secondary">🖨️ Cetak / PDF</button>
+        </div>
       </div>
 
-      <div class="filters" role="tablist">
-        <button class="filter-btn active" data-filter="all">Semua</button>
-        <button class="filter-btn" data-filter="active">Aktif</button>
-        <button class="filter-btn" data-filter="completed">Selesai</button>
-      </div>
+      <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+
+      <footer class="app-footer">
+        <span id="items-count">0 tugas</span>
+        <button id="clear-completed" class="btn-link">Hapus yang selesai</button>
+      </footer>
     </section>
 
-    <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
-
-    <footer class="app-footer">
-      <span id="items-count">0 tugas</span>
-      <button id="clear-completed" class="btn-link">Hapus yang selesai</button>
-    </footer>
+    <section id="tab-history" class="tab-panel">
+      <div class="controls">
+        <label class="field">
+          <span>📆 Pilih Bulan</span>
+          <select id="history-month"></select>
+        </label>
+        <div class="actions">
+          <button id="print-history-btn" class="btn-secondary">🖨️ Cetak / PDF Bulan Ini</button>
+        </div>
+      </div>
+      <div id="history-summary" class="history-summary"></div>
+      <ul id="history-list" class="todo-list"></ul>
+    </section>
   </main>
+
+  <div id="print-root" class="print-only"></div>
 
   <script src="script.js"></script>
 </body>
