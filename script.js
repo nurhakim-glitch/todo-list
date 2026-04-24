@@ -9,6 +9,15 @@ const DURATION_LABELS = {
   bulanan: "Bulanan",
 };
 
+const DURATION_MS = {
+  cepat: 30 * 60 * 1000,
+  sedang: 2 * 60 * 60 * 1000,
+  lama: 8 * 60 * 60 * 1000,
+  harian: 24 * 60 * 60 * 1000,
+  mingguan: 7 * 24 * 60 * 60 * 1000,
+  bulanan: 30 * 24 * 60 * 60 * 1000,
+};
+
 const MONTH_NAMES = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
@@ -254,6 +263,64 @@ function renderMeta(todo, query) {
     : "";
 }
 
+function getProgress(todo) {
+  if (!todo.duration || !DURATION_MS[todo.duration]) return null;
+  const startMs = todo.date
+    ? new Date(todo.date + "T00:00:00").getTime()
+    : todo.createdAt;
+  if (Number.isNaN(startMs)) return null;
+  const duration = DURATION_MS[todo.duration];
+  const deadline = startMs + duration;
+  const now = Date.now();
+  const elapsed = now - startMs;
+  const ratio = elapsed / duration;
+  const remaining = deadline - now;
+  return {
+    startMs,
+    deadline,
+    duration,
+    elapsed,
+    remaining,
+    ratio,
+    percent: Math.max(0, Math.min(100, ratio * 100)),
+    overdue: ratio > 1,
+  };
+}
+
+function formatRelative(ms) {
+  const abs = Math.abs(ms);
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (abs < minute) return "<1 menit";
+  if (abs < hour) return `${Math.round(abs / minute)} menit`;
+  if (abs < day) return `${Math.round(abs / hour)} jam`;
+  return `${Math.round(abs / day)} hari`;
+}
+
+function renderProgress(todo) {
+  if (todo.completed) return "";
+  const p = getProgress(todo);
+  if (!p) return "";
+
+  let state = "ok";
+  if (p.overdue) state = "overdue";
+  else if (p.percent >= 90) state = "critical";
+  else if (p.percent >= 60) state = "warn";
+
+  const width = p.overdue ? 100 : p.percent;
+  const label = p.overdue
+    ? `⚠️ Terlambat ${formatRelative(-p.remaining)}`
+    : `⏳ ${Math.round(p.percent)}% · sisa ${formatRelative(p.remaining)}`;
+
+  return `
+    <div class="progress progress-${state}" title="${escapeHtml(label)}">
+      <div class="progress-bar" style="width:${width}%"></div>
+      <span class="progress-label">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
 function renderProof(todo) {
   const wrapper = document.createElement("div");
   wrapper.className = "proof-row";
@@ -319,6 +386,7 @@ function renderTodoItem(todo, query) {
   body.innerHTML = `
     <span class="todo-text">${highlight(todo.text, query)}</span>
     ${renderMeta(todo, query)}
+    ${renderProgress(todo)}
   `;
   body.appendChild(renderProof(todo));
 
@@ -568,3 +636,8 @@ printHistoryBtn.addEventListener("click", () => {
 });
 
 renderAll();
+
+setInterval(() => {
+  const hasLive = todos.some((t) => !t.completed && DURATION_MS[t.duration]);
+  if (hasLive) render();
+}, 60 * 1000);

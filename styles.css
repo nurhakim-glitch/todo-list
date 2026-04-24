@@ -344,6 +344,66 @@ body {
   opacity: 0.6;
 }
 
+.progress {
+  position: relative;
+  height: 20px;
+  background: #edf2f7;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  transition: width 0.4s ease, background-color 0.3s ease;
+  border-radius: 999px;
+}
+
+.progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2d3748;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+.progress-ok .progress-bar {
+  background: linear-gradient(90deg, #48bb78, #38a169);
+}
+
+.progress-warn .progress-bar {
+  background: linear-gradient(90deg, #ecc94b, #d69e2e);
+}
+
+.progress-critical .progress-bar {
+  background: linear-gradient(90deg, #ed8936, #dd6b20);
+}
+
+.progress-overdue {
+  background: #fed7d7;
+  animation: overdue-pulse 2s ease-in-out infinite;
+}
+
+.progress-overdue .progress-bar {
+  background: linear-gradient(90deg, #f56565, #c53030);
+}
+
+.progress-overdue .progress-label {
+  color: #742a2a;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+@keyframes overdue-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(229, 62, 62, 0); }
+}
+
 .proof-row {
   display: flex;
   align-items: center;
