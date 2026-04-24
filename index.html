@@ -18,18 +18,49 @@
         <input
           id="todo-input"
           type="text"
-          placeholder="Tambahkan tugas baru..."
+          placeholder="Nama tugas..."
           autocomplete="off"
           required
         />
-        <button type="submit" class="btn-primary">Tambah</button>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>📅 Tanggal</span>
+            <input id="todo-date" type="date" />
+          </label>
+
+          <label class="field">
+            <span>👤 Pelaksana</span>
+            <input
+              id="todo-assignee"
+              type="text"
+              placeholder="Nama pelaksana"
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="field">
+            <span>⏱️ Kategori Waktu</span>
+            <select id="todo-duration">
+              <option value="">— Pilih —</option>
+              <option value="cepat">Cepat (&lt; 30 menit)</option>
+              <option value="sedang">Sedang (30 menit – 2 jam)</option>
+              <option value="lama">Lama (&gt; 2 jam)</option>
+              <option value="harian">Harian</option>
+              <option value="mingguan">Mingguan</option>
+              <option value="bulanan">Bulanan</option>
+            </select>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-primary">Tambah Tugas</button>
       </form>
 
       <div class="search-bar">
         <input
           id="search-input"
           type="search"
-          placeholder="🔍 Cari tugas..."
+          placeholder="🔍 Cari tugas atau pelaksana..."
           autocomplete="off"
         />
       </div>

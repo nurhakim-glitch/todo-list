@@ -48,25 +48,55 @@ body {
 
 .todo-form {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
 #todo-input,
-#search-input {
-  flex: 1;
+#search-input,
+#todo-assignee,
+#todo-date,
+#todo-duration {
   padding: 0.75rem 1rem;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
   font-size: 1rem;
+  font-family: inherit;
   transition: border-color 0.2s;
   width: 100%;
+  background: #fff;
+  color: #2d3748;
 }
 
 #todo-input:focus,
-#search-input:focus {
+#search-input:focus,
+#todo-assignee:focus,
+#todo-date:focus,
+#todo-duration:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.field input,
+.field select {
+  font-weight: 400;
+  font-size: 0.95rem;
 }
 
 .search-bar {
@@ -141,8 +171,15 @@ body {
   accent-color: #667eea;
 }
 
-.todo-text {
+.todo-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.todo-text {
   font-size: 1rem;
   word-break: break-word;
 }
@@ -152,11 +189,64 @@ body {
   color: #a0aec0;
 }
 
-.todo-text mark {
+.todo-text mark,
+.meta-chip mark {
   background: #fef3c7;
   color: inherit;
   padding: 0 2px;
   border-radius: 2px;
+}
+
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+.meta-date {
+  background: #e6fffa;
+  color: #2c7a7b;
+}
+
+.meta-assignee {
+  background: #ebf4ff;
+  color: #3c4ea0;
+}
+
+.meta-duration {
+  background: #faf5ff;
+  color: #6b46c1;
+}
+
+.meta-cepat {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.meta-sedang {
+  background: #fefcbf;
+  color: #744210;
+}
+
+.meta-lama {
+  background: #fed7d7;
+  color: #822727;
+}
+
+.todo-item.completed .meta-chip {
+  opacity: 0.6;
 }
 
 .btn-delete {
@@ -203,12 +293,16 @@ body {
   color: #5568d3;
 }
 
+.btn-primary {
+  width: 100%;
+}
+
 @media (max-width: 480px) {
-  .todo-form {
-    flex-direction: column;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
-  .btn-primary {
-    width: 100%;
+  .todo-item {
+    padding: 0.75rem 1rem;
   }
 }
