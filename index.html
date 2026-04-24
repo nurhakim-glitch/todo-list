@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>📝 Todo List</h1>
+      <p class="subtitle">Kelola tugas harianmu dengan mudah</p>
+    </header>
+
+    <section class="controls">
+      <form id="todo-form" class="todo-form">
+        <input
+          id="todo-input"
+          type="text"
+          placeholder="Tambahkan tugas baru..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit" class="btn-primary">Tambah</button>
+      </form>
+
+      <div class="search-bar">
+        <input
+          id="search-input"
+          type="search"
+          placeholder="🔍 Cari tugas..."
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="filters" role="tablist">
+        <button class="filter-btn active" data-filter="all">Semua</button>
+        <button class="filter-btn" data-filter="active">Aktif</button>
+        <button class="filter-btn" data-filter="completed">Selesai</button>
+      </div>
+    </section>
+
+    <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+
+    <footer class="app-footer">
+      <span id="items-count">0 tugas</span>
+      <button id="clear-completed" class="btn-link">Hapus yang selesai</button>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
