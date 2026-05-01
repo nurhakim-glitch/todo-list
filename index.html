@@ -3,109 +3,351 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Todo List</title>
+  <title>SISKERMA - Sistem Informasi Kerjasama</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app">
-    <header class="app-header">
-      <h1>📝 Todo List</h1>
-      <p class="subtitle">Kelola tugas harianmu dengan mudah</p>
-    </header>
+  <!-- LOGIN PAGE -->
+  <div id="login-page" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-logo">SK</div>
+        <h1>SISKERMA</h1>
+        <p>Sistem Informasi Kerjasama</p>
+      </div>
+      <form id="login-form" class="login-form" autocomplete="off">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input id="login-username" type="text" placeholder="Masukkan username" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="Masukkan password" required />
+        </div>
+        <div id="login-error" class="alert alert-error hidden"></div>
+        <button type="submit" class="btn btn-primary btn-block">Masuk</button>
+        <p class="login-hint">Demo: <strong>admin</strong> / <strong>admin123</strong></p>
+      </form>
+      <div class="login-footer">&copy; <span id="year"></span> Universitas — Bagian Kerjasama</div>
+    </div>
+  </div>
 
-    <nav class="tabs" role="tablist">
-      <button class="tab-btn active" data-tab="list" role="tab">📋 Daftar Tugas</button>
-      <button class="tab-btn" data-tab="history" role="tab">📊 Histori Bulanan</button>
-    </nav>
+  <!-- APP SHELL -->
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo small">SK</div>
+        <div>
+          <div class="brand-title">SISKERMA</div>
+          <div class="brand-sub">Kerjasama</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-link" data-route="dashboard">
+          <span class="nav-icon">▦</span> Dashboard
+        </a>
+        <a href="#kerjasama" class="nav-link" data-route="kerjasama">
+          <span class="nav-icon">📋</span> Kerjasama
+        </a>
+        <a href="#mitra" class="nav-link" data-route="mitra">
+          <span class="nav-icon">🏢</span> Mitra
+        </a>
+        <a href="#profil" class="nav-link" data-route="profil">
+          <span class="nav-icon">👤</span> Profil
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="btn-logout" class="btn btn-ghost btn-block">Keluar</button>
+      </div>
+    </aside>
 
-    <section id="tab-list" class="tab-panel active">
-      <div class="controls">
-        <form id="todo-form" class="todo-form">
-          <input
-            id="todo-input"
-            type="text"
-            placeholder="Nama tugas..."
-            autocomplete="off"
-            required
-          />
-
-          <div class="form-grid">
-            <label class="field">
-              <span>📅 Tanggal</span>
-              <input id="todo-date" type="date" />
-            </label>
-
-            <label class="field">
-              <span>👤 Pelaksana</span>
-              <input
-                id="todo-assignee"
-                type="text"
-                placeholder="Nama pelaksana"
-                autocomplete="off"
-              />
-            </label>
-
-            <label class="field">
-              <span>⏱️ Kategori Waktu</span>
-              <select id="todo-duration">
-                <option value="">— Pilih —</option>
-                <option value="cepat">Cepat (&lt; 30 menit)</option>
-                <option value="sedang">Sedang (30 menit – 2 jam)</option>
-                <option value="lama">Lama (&gt; 2 jam)</option>
-                <option value="harian">Harian</option>
-                <option value="mingguan">Mingguan</option>
-                <option value="bulanan">Bulanan</option>
-              </select>
-            </label>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="page-title">Dashboard</h2>
+          <div id="page-subtitle" class="page-subtitle">Ringkasan data kerjasama</div>
+        </div>
+        <div class="topbar-user">
+          <div class="user-avatar" id="user-avatar">A</div>
+          <div>
+            <div class="user-name" id="user-name">Admin</div>
+            <div class="user-role">Administrator</div>
           </div>
+        </div>
+      </header>
 
-          <button type="submit" class="btn-primary">Tambah Tugas</button>
-        </form>
-
-        <div class="search-bar">
-          <input
-            id="search-input"
-            type="search"
-            placeholder="🔍 Cari tugas atau pelaksana..."
-            autocomplete="off"
-          />
+      <section id="view-dashboard" class="view">
+        <div class="stats-grid">
+          <div class="stat-card stat-blue">
+            <div class="stat-label">Total Kerjasama</div>
+            <div class="stat-value" id="stat-total">0</div>
+          </div>
+          <div class="stat-card stat-green">
+            <div class="stat-label">MoU Aktif</div>
+            <div class="stat-value" id="stat-mou">0</div>
+          </div>
+          <div class="stat-card stat-yellow">
+            <div class="stat-label">PKS Aktif</div>
+            <div class="stat-value" id="stat-pks">0</div>
+          </div>
+          <div class="stat-card stat-red">
+            <div class="stat-label">Akan Berakhir</div>
+            <div class="stat-value" id="stat-soon">0</div>
+          </div>
         </div>
 
-        <div class="filters" role="tablist">
-          <button class="filter-btn active" data-filter="all">Semua</button>
-          <button class="filter-btn" data-filter="active">Aktif</button>
-          <button class="filter-btn" data-filter="completed">Selesai</button>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3>Kerjasama Terbaru</h3>
+            </div>
+            <div class="card-body">
+              <table class="table">
+                <thead>
+                  <tr><th>Nomor</th><th>Judul</th><th>Mitra</th><th>Status</th></tr>
+                </thead>
+                <tbody id="recent-kerjasama"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Distribusi Jenis</h3>
+            </div>
+            <div class="card-body">
+              <div id="distribusi-list" class="distribusi-list"></div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div class="actions">
-          <button id="print-list-btn" class="btn-secondary">🖨️ Cetak / PDF</button>
+      <section id="view-kerjasama" class="view hidden">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input id="ks-search" type="text" placeholder="Cari nomor, judul, mitra..." class="input" />
+            <select id="ks-filter-jenis" class="input">
+              <option value="">Semua Jenis</option>
+              <option value="MoU">MoU</option>
+              <option value="PKS">PKS</option>
+              <option value="IA">IA</option>
+            </select>
+            <select id="ks-filter-status" class="input">
+              <option value="">Semua Status</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Berakhir">Berakhir</option>
+              <option value="Draft">Draft</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button id="btn-new-kerjasama" class="btn btn-primary">+ Tambah Kerjasama</button>
+          </div>
         </div>
+        <div class="card">
+          <div class="card-body">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nomor</th>
+                  <th>Jenis</th>
+                  <th>Judul</th>
+                  <th>Mitra</th>
+                  <th>Periode</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="ks-tbody"></tbody>
+            </table>
+            <div id="ks-empty" class="empty hidden">Belum ada data kerjasama.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-mitra" class="view hidden">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input id="mt-search" type="text" placeholder="Cari mitra..." class="input" />
+            <select id="mt-filter-jenis" class="input">
+              <option value="">Semua Jenis</option>
+              <option value="Pemerintah">Pemerintah</option>
+              <option value="Swasta">Swasta</option>
+              <option value="Perguruan Tinggi">Perguruan Tinggi</option>
+              <option value="Sekolah">Sekolah</option>
+              <option value="UMKM">UMKM</option>
+              <option value="Internasional">Internasional</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button id="btn-new-mitra" class="btn btn-primary">+ Tambah Mitra</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nama Mitra</th>
+                  <th>Jenis</th>
+                  <th>Kontak</th>
+                  <th>Email</th>
+                  <th>Alamat</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="mt-tbody"></tbody>
+            </table>
+            <div id="mt-empty" class="empty hidden">Belum ada data mitra.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-profil" class="view hidden">
+        <div class="card profile-card">
+          <div class="profile-head">
+            <div class="user-avatar large" id="profile-avatar">A</div>
+            <div>
+              <h3 id="profile-name">Admin</h3>
+              <p class="muted">Administrator SISKERMA</p>
+            </div>
+          </div>
+          <div class="profile-body">
+            <div class="form-row">
+              <label>Username</label>
+              <div id="profile-username">admin</div>
+            </div>
+            <div class="form-row">
+              <label>Email</label>
+              <div>admin@kerjasama.ac.id</div>
+            </div>
+            <div class="form-row">
+              <label>Unit Kerja</label>
+              <div>Bagian Kerjasama</div>
+            </div>
+            <div class="form-row">
+              <label>Hak Akses</label>
+              <div>Administrator</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: Kerjasama -->
+  <div id="modal-kerjasama" class="modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 id="mk-title">Tambah Kerjasama</h3>
+        <button class="modal-close" data-close>&times;</button>
       </div>
-
-      <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
-
-      <footer class="app-footer">
-        <span id="items-count">0 tugas</span>
-        <button id="clear-completed" class="btn-link">Hapus yang selesai</button>
-      </footer>
-    </section>
-
-    <section id="tab-history" class="tab-panel">
-      <div class="controls">
-        <label class="field">
-          <span>📆 Pilih Bulan</span>
-          <select id="history-month"></select>
-        </label>
-        <div class="actions">
-          <button id="print-history-btn" class="btn-secondary">🖨️ Cetak / PDF Bulan Ini</button>
+      <form id="form-kerjasama" class="modal-body">
+        <input type="hidden" id="ks-id" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Nomor Dokumen *</label>
+            <input id="ks-nomor" type="text" required />
+          </div>
+          <div class="form-group">
+            <label>Jenis Kerjasama *</label>
+            <select id="ks-jenis" required>
+              <option value="MoU">MoU (Memorandum of Understanding)</option>
+              <option value="PKS">PKS (Perjanjian Kerja Sama)</option>
+              <option value="IA">IA (Implementation Agreement)</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div id="history-summary" class="history-summary"></div>
-      <ul id="history-list" class="todo-list"></ul>
-    </section>
-  </main>
+        <div class="form-group">
+          <label>Judul Kerjasama *</label>
+          <input id="ks-judul" type="text" required />
+        </div>
+        <div class="form-group">
+          <label>Mitra *</label>
+          <select id="ks-mitra" required></select>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Tanggal Mulai *</label>
+            <input id="ks-mulai" type="date" required />
+          </div>
+          <div class="form-group">
+            <label>Tanggal Selesai *</label>
+            <input id="ks-selesai" type="date" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ruang Lingkup</label>
+          <textarea id="ks-lingkup" rows="3"></textarea>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Status *</label>
+            <select id="ks-status" required>
+              <option value="Draft">Draft</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Berakhir">Berakhir</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Penanggung Jawab</label>
+            <input id="ks-pj" type="text" />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  <div id="print-root" class="print-only"></div>
+  <!-- MODAL: Mitra -->
+  <div id="modal-mitra" class="modal hidden">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 id="mm-title">Tambah Mitra</h3>
+        <button class="modal-close" data-close>&times;</button>
+      </div>
+      <form id="form-mitra" class="modal-body">
+        <input type="hidden" id="mt-id" />
+        <div class="form-group">
+          <label>Nama Mitra *</label>
+          <input id="mt-nama" type="text" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Jenis Mitra *</label>
+            <select id="mt-jenis" required>
+              <option value="Pemerintah">Pemerintah</option>
+              <option value="Swasta">Swasta</option>
+              <option value="Perguruan Tinggi">Perguruan Tinggi</option>
+              <option value="Sekolah">Sekolah</option>
+              <option value="UMKM">UMKM</option>
+              <option value="Internasional">Internasional</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>No. Kontak</label>
+            <input id="mt-kontak" type="text" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="mt-email" type="email" />
+        </div>
+        <div class="form-group">
+          <label>Alamat</label>
+          <textarea id="mt-alamat" rows="2"></textarea>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
 
   <script src="script.js"></script>
 </body>

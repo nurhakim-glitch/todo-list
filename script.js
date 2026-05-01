@@ -1,643 +1,470 @@
-const STORAGE_KEY = "todos.v2";
+/* SISKERMA - Sistem Informasi Kerjasama
+ * Vanilla JS SPA with localStorage persistence.
+ */
 
-const DURATION_LABELS = {
-  cepat: "Cepat (<30m)",
-  sedang: "Sedang (30m–2j)",
-  lama: "Lama (>2j)",
-  harian: "Harian",
-  mingguan: "Mingguan",
-  bulanan: "Bulanan",
+const STORAGE_KEYS = {
+  session: 'siskerma_session',
+  mitra: 'siskerma_mitra',
+  kerjasama: 'siskerma_kerjasama',
 };
 
-const DURATION_MS = {
-  cepat: 30 * 60 * 1000,
-  sedang: 2 * 60 * 60 * 1000,
-  lama: 8 * 60 * 60 * 1000,
-  harian: 24 * 60 * 60 * 1000,
-  mingguan: 7 * 24 * 60 * 60 * 1000,
-  bulanan: 30 * 24 * 60 * 60 * 1000,
-};
+const DEFAULT_USER = { username: 'admin', password: 'admin123', name: 'Admin Kerjasama' };
 
-const MONTH_NAMES = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+const SEED_MITRA = [
+  { id: 'm1', nama: 'PT Bank Mandiri (Persero) Tbk', jenis: 'Swasta', kontak: '021-5245000', email: 'kerjasama@bankmandiri.co.id', alamat: 'Jl. Jend. Gatot Subroto, Jakarta' },
+  { id: 'm2', nama: 'Universitas Indonesia', jenis: 'Perguruan Tinggi', kontak: '021-7867222', email: 'humas@ui.ac.id', alamat: 'Depok, Jawa Barat' },
+  { id: 'm3', nama: 'Pemerintah Kota Tangerang Selatan', jenis: 'Pemerintah', kontak: '021-5312345', email: 'humas@tangerangselatankota.go.id', alamat: 'Jl. Witana Harja, Pamulang' },
+  { id: 'm4', nama: 'SMA Negeri 1 Pamulang', jenis: 'Sekolah', kontak: '021-7409999', email: 'info@sman1pamulang.sch.id', alamat: 'Jl. Surya Kencana, Pamulang' },
 ];
 
-const form = document.getElementById("todo-form");
-const input = document.getElementById("todo-input");
-const dateInput = document.getElementById("todo-date");
-const assigneeInput = document.getElementById("todo-assignee");
-const durationInput = document.getElementById("todo-duration");
-const searchInput = document.getElementById("search-input");
-const list = document.getElementById("todo-list");
-const itemsCount = document.getElementById("items-count");
-const clearCompletedBtn = document.getElementById("clear-completed");
-const filterBtns = document.querySelectorAll(".filter-btn");
-const tabBtns = document.querySelectorAll(".tab-btn");
-const tabPanels = document.querySelectorAll(".tab-panel");
-const historyMonthSelect = document.getElementById("history-month");
-const historyList = document.getElementById("history-list");
-const historySummary = document.getElementById("history-summary");
-const printListBtn = document.getElementById("print-list-btn");
-const printHistoryBtn = document.getElementById("print-history-btn");
-const printRoot = document.getElementById("print-root");
+const SEED_KERJASAMA = [
+  { id: 'k1', nomor: '001/MoU/2025', jenis: 'MoU', judul: 'Kerjasama Pengembangan SDM dan Magang', mitraId: 'm1', mulai: '2025-01-15', selesai: '2027-01-14', status: 'Aktif', lingkup: 'Magang mahasiswa, beasiswa, riset bersama', pj: 'Dr. Andi Wijaya' },
+  { id: 'k2', nomor: '002/PKS/2025', jenis: 'PKS', judul: 'Pelaksanaan Tridharma Perguruan Tinggi', mitraId: 'm2', mulai: '2025-02-01', selesai: '2026-02-01', status: 'Aktif', lingkup: 'Penelitian dan pengabdian masyarakat', pj: 'Prof. Siti Rahma' },
+  { id: 'k3', nomor: '003/MoU/2024', jenis: 'MoU', judul: 'Pemberdayaan Masyarakat Tangsel', mitraId: 'm3', mulai: '2024-06-01', selesai: '2025-05-31', status: 'Aktif', lingkup: 'KKN tematik dan pelatihan UMKM', pj: 'Dr. Budi Santoso' },
+  { id: 'k4', nomor: '004/IA/2024', jenis: 'IA', judul: 'Program Kampus Mengajar', mitraId: 'm4', mulai: '2024-08-01', selesai: '2025-07-31', status: 'Aktif', lingkup: 'Penempatan mahasiswa pendidikan di sekolah', pj: 'Dewi Lestari, M.Pd.' },
+  { id: 'k5', nomor: '005/PKS/2023', jenis: 'PKS', judul: 'Sertifikasi Kompetensi Mahasiswa', mitraId: 'm1', mulai: '2023-03-01', selesai: '2024-02-29', status: 'Berakhir', lingkup: 'Pelaksanaan uji sertifikasi', pj: 'Dr. Andi Wijaya' },
+];
 
-let todos = loadTodos();
-let currentFilter = "all";
-let searchQuery = "";
-let selectedMonth = "";
-
-function loadTodos() {
+// ----- Storage helpers -----
+function load(key, fallback) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  } catch { return fallback; }
+}
+function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function uid(prefix = '') { return prefix + Math.random().toString(36).slice(2, 10); }
+
+function seedIfEmpty() {
+  if (!localStorage.getItem(STORAGE_KEYS.mitra)) save(STORAGE_KEYS.mitra, SEED_MITRA);
+  if (!localStorage.getItem(STORAGE_KEYS.kerjasama)) save(STORAGE_KEYS.kerjasama, SEED_KERJASAMA);
 }
 
-function saveTodos() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+// ----- State -----
+const state = {
+  user: null,
+  route: 'dashboard',
+  ksFilter: { q: '', jenis: '', status: '' },
+  mtFilter: { q: '', jenis: '' },
+};
+
+// ----- Utilities -----
+function fmtDate(s) {
+  if (!s) return '-';
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-
-function addTodo({ text, date, assignee, duration }) {
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  todos.unshift({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    text: trimmed,
-    date: date || "",
-    assignee: assignee.trim(),
-    duration: duration || "",
-    completed: false,
-    createdAt: Date.now(),
-  });
-  saveTodos();
-  renderAll();
-}
-
-function toggleTodo(id) {
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) return;
-  const willComplete = !todo.completed;
-  todo.completed = willComplete;
-  saveTodos();
-  renderAll();
-  if (willComplete && !todo.proof) {
-    const li = document.querySelector(`.todo-item[data-id="${todo.id}"]`);
-    if (li) {
-      const uploadBtn = li.querySelector(".btn-upload");
-      if (uploadBtn) uploadBtn.classList.add("btn-pulse");
-    }
-  }
-}
-
-const MAX_PROOF_BYTES = 3 * 1024 * 1024;
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function attachProof(id, file) {
-  if (!file) return;
-  if (file.size > MAX_PROOF_BYTES) {
-    alert(
-      `Ukuran file terlalu besar (${formatBytes(file.size)}). Maksimum ${formatBytes(MAX_PROOF_BYTES)}.`,
-    );
-    return;
-  }
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) return;
-  try {
-    const dataUrl = await readFileAsDataUrl(file);
-    todo.proof = {
-      name: file.name,
-      type: file.type || "application/octet-stream",
-      size: file.size,
-      dataUrl,
-      uploadedAt: Date.now(),
-    };
-    saveTodos();
-    renderAll();
-  } catch (err) {
-    console.error(err);
-    alert("Gagal membaca file. Coba lagi dengan file yang lebih kecil.");
-  }
-}
-
-function removeProof(id) {
-  const todo = todos.find((t) => t.id === id);
-  if (!todo || !todo.proof) return;
-  if (!confirm(`Hapus bukti "${todo.proof.name}"?`)) return;
-  todo.proof = null;
-  saveTodos();
-  renderAll();
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function openProof(todo) {
-  const w = window.open("", "_blank");
-  if (!w) {
-    alert("Browser memblokir jendela popup. Izinkan popup untuk situs ini.");
-    return;
-  }
-  const isImage = (todo.proof.type || "").startsWith("image/");
-  const safeName = escapeHtml(todo.proof.name);
-  w.document.write(`
-    <!DOCTYPE html>
-    <html><head><title>Bukti: ${safeName}</title>
-    <style>
-      body{margin:0;padding:1rem;font-family:sans-serif;background:#1a202c;color:#fff;text-align:center}
-      img{max-width:100%;max-height:90vh;border-radius:8px}
-      a.download{display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#667eea;color:#fff;text-decoration:none;border-radius:6px}
-    </style></head>
-    <body>
-      <h3>${safeName}</h3>
-      ${
-        isImage
-          ? `<img src="${todo.proof.dataUrl}" alt="${safeName}">`
-          : `<p>File: ${safeName} (${formatBytes(todo.proof.size)})</p>`
-      }
-      <div><a class="download" href="${todo.proof.dataUrl}" download="${safeName}">⬇️ Unduh</a></div>
-    </body></html>
-  `);
-  w.document.close();
-}
-
-function deleteTodo(id) {
-  todos = todos.filter((t) => t.id !== id);
-  saveTodos();
-  renderAll();
-}
-
-function clearCompleted() {
-  todos = todos.filter((t) => !t.completed);
-  saveTodos();
-  renderAll();
-}
-
 function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[c]);
 }
-
-function highlight(text, query) {
-  const safe = escapeHtml(text);
-  if (!query) return safe;
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escapedQuery})`, "gi");
-  return safe.replace(regex, "<mark>$1</mark>");
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  setTimeout(() => el.classList.add('hidden'), 2400);
 }
+function getMitra() { return load(STORAGE_KEYS.mitra, []); }
+function getKerjasama() { return load(STORAGE_KEYS.kerjasama, []); }
+function findMitra(id) { return getMitra().find(m => m.id === id); }
 
-function formatDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso + "T00:00:00");
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function getMonthKey(todo) {
-  const iso = todo.date || new Date(todo.createdAt).toISOString().slice(0, 10);
-  return iso.slice(0, 7);
-}
-
-function formatMonthKey(key) {
-  const [y, m] = key.split("-");
-  return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
-}
-
-function getFilteredTodos() {
-  const query = searchQuery.trim().toLowerCase();
-  return todos.filter((todo) => {
-    if (currentFilter === "active" && todo.completed) return false;
-    if (currentFilter === "completed" && !todo.completed) return false;
-    if (query) {
-      const haystack = [
-        todo.text,
-        todo.assignee || "",
-        todo.date || "",
-        DURATION_LABELS[todo.duration] || "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!haystack.includes(query)) return false;
-    }
+// ----- Auth -----
+function tryLogin(username, password) {
+  if (username === DEFAULT_USER.username && password === DEFAULT_USER.password) {
+    const session = { username: DEFAULT_USER.username, name: DEFAULT_USER.name, loggedAt: Date.now() };
+    save(STORAGE_KEYS.session, session);
+    state.user = session;
     return true;
+  }
+  return false;
+}
+function logout() {
+  localStorage.removeItem(STORAGE_KEYS.session);
+  state.user = null;
+  showLogin();
+}
+function showLogin() {
+  document.getElementById('login-page').classList.remove('hidden');
+  document.getElementById('app-shell').classList.add('hidden');
+}
+function showApp() {
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+  const initial = (state.user.name || 'A').charAt(0).toUpperCase();
+  document.getElementById('user-name').textContent = state.user.name;
+  document.getElementById('user-avatar').textContent = initial;
+  document.getElementById('profile-name').textContent = state.user.name;
+  document.getElementById('profile-avatar').textContent = initial;
+  document.getElementById('profile-username').textContent = state.user.username;
+  navigate(location.hash.replace('#','') || 'dashboard');
+}
+
+// ----- Routing -----
+const PAGES = {
+  dashboard: { title: 'Dashboard', subtitle: 'Ringkasan data kerjasama', render: renderDashboard },
+  kerjasama: { title: 'Daftar Kerjasama', subtitle: 'Kelola dokumen MoU, PKS, dan IA', render: renderKerjasama },
+  mitra: { title: 'Daftar Mitra', subtitle: 'Kelola data mitra kerjasama', render: renderMitra },
+  profil: { title: 'Profil Pengguna', subtitle: 'Informasi akun', render: () => {} },
+};
+
+function navigate(route) {
+  if (!PAGES[route]) route = 'dashboard';
+  state.route = route;
+  location.hash = route;
+  document.querySelectorAll('.nav-link').forEach(a => {
+    a.classList.toggle('active', a.dataset.route === route);
   });
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + route).classList.remove('hidden');
+  document.getElementById('page-title').textContent = PAGES[route].title;
+  document.getElementById('page-subtitle').textContent = PAGES[route].subtitle;
+  PAGES[route].render();
 }
 
-function renderMeta(todo, query) {
-  const parts = [];
-  if (todo.date) {
-    parts.push(
-      `<span class="meta-chip meta-date">📅 ${escapeHtml(formatDate(todo.date))}</span>`,
-    );
-  }
-  if (todo.assignee) {
-    parts.push(
-      `<span class="meta-chip meta-assignee">👤 ${highlight(todo.assignee, query)}</span>`,
-    );
-  }
-  if (todo.duration && DURATION_LABELS[todo.duration]) {
-    parts.push(
-      `<span class="meta-chip meta-duration meta-${todo.duration}">⏱️ ${escapeHtml(DURATION_LABELS[todo.duration])}</span>`,
-    );
-  }
-  return parts.length
-    ? `<div class="todo-meta">${parts.join("")}</div>`
-    : "";
+// ----- Dashboard -----
+function renderDashboard() {
+  const ks = getKerjasama();
+  const today = new Date();
+  const in60 = new Date(); in60.setDate(today.getDate() + 60);
+
+  const total = ks.length;
+  const mou = ks.filter(k => k.jenis === 'MoU' && k.status === 'Aktif').length;
+  const pks = ks.filter(k => k.jenis === 'PKS' && k.status === 'Aktif').length;
+  const soon = ks.filter(k => {
+    if (k.status !== 'Aktif') return false;
+    const end = new Date(k.selesai);
+    return end >= today && end <= in60;
+  }).length;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-mou').textContent = mou;
+  document.getElementById('stat-pks').textContent = pks;
+  document.getElementById('stat-soon').textContent = soon;
+
+  const recent = [...ks].sort((a,b) => (b.mulai || '').localeCompare(a.mulai || '')).slice(0, 5);
+  document.getElementById('recent-kerjasama').innerHTML = recent.length ? recent.map(k => {
+    const m = findMitra(k.mitraId);
+    return `<tr>
+      <td>${escapeHtml(k.nomor)}</td>
+      <td>${escapeHtml(k.judul)}</td>
+      <td>${escapeHtml(m ? m.nama : '-')}</td>
+      <td>${statusBadge(k.status)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="4" class="empty">Belum ada data</td></tr>';
+
+  const jenisCount = { MoU: 0, PKS: 0, IA: 0 };
+  ks.forEach(k => { if (jenisCount[k.jenis] != null) jenisCount[k.jenis]++; });
+  const max = Math.max(1, ...Object.values(jenisCount));
+  document.getElementById('distribusi-list').innerHTML = Object.entries(jenisCount).map(([j, c]) => {
+    const pct = Math.round((c / max) * 100);
+    return `<div class="distribusi-item">
+      <div class="distribusi-label">${j}</div>
+      <div class="distribusi-bar"><div class="distribusi-fill" style="width:${pct}%">${c}</div></div>
+    </div>`;
+  }).join('');
 }
 
-function getProgress(todo) {
-  if (!todo.duration || !DURATION_MS[todo.duration]) return null;
-  const startMs = todo.date
-    ? new Date(todo.date + "T00:00:00").getTime()
-    : todo.createdAt;
-  if (Number.isNaN(startMs)) return null;
-  const duration = DURATION_MS[todo.duration];
-  const deadline = startMs + duration;
-  const now = Date.now();
-  const elapsed = now - startMs;
-  const ratio = elapsed / duration;
-  const remaining = deadline - now;
-  return {
-    startMs,
-    deadline,
-    duration,
-    elapsed,
-    remaining,
-    ratio,
-    percent: Math.max(0, Math.min(100, ratio * 100)),
-    overdue: ratio > 1,
-  };
+function statusBadge(s) {
+  const cls = s === 'Aktif' ? 'badge-aktif' : s === 'Berakhir' ? 'badge-berakhir' : 'badge-draft';
+  return `<span class="badge ${cls}">${escapeHtml(s)}</span>`;
+}
+function jenisBadge(j) {
+  const cls = j === 'MoU' ? 'badge-mou' : j === 'PKS' ? 'badge-pks' : 'badge-ia';
+  return `<span class="badge ${cls}">${escapeHtml(j)}</span>`;
 }
 
-function formatRelative(ms) {
-  const abs = Math.abs(ms);
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (abs < minute) return "<1 menit";
-  if (abs < hour) return `${Math.round(abs / minute)} menit`;
-  if (abs < day) return `${Math.round(abs / hour)} jam`;
-  return `${Math.round(abs / day)} hari`;
-}
+// ----- Kerjasama -----
+function renderKerjasama() {
+  const all = getKerjasama();
+  const { q, jenis, status } = state.ksFilter;
+  const qLower = q.toLowerCase();
+  const filtered = all.filter(k => {
+    const m = findMitra(k.mitraId);
+    const matchQ = !q ||
+      k.nomor.toLowerCase().includes(qLower) ||
+      k.judul.toLowerCase().includes(qLower) ||
+      (m && m.nama.toLowerCase().includes(qLower));
+    const matchJ = !jenis || k.jenis === jenis;
+    const matchS = !status || k.status === status;
+    return matchQ && matchJ && matchS;
+  });
 
-function renderProgress(todo) {
-  if (todo.completed) return "";
-  const p = getProgress(todo);
-  if (!p) return "";
-
-  let state = "ok";
-  if (p.overdue) state = "overdue";
-  else if (p.percent >= 90) state = "critical";
-  else if (p.percent >= 60) state = "warn";
-
-  const width = p.overdue ? 100 : p.percent;
-  const label = p.overdue
-    ? `⚠️ Terlambat ${formatRelative(-p.remaining)}`
-    : `⏳ ${Math.round(p.percent)}% · sisa ${formatRelative(p.remaining)}`;
-
-  return `
-    <div class="progress progress-${state}" title="${escapeHtml(label)}">
-      <div class="progress-bar" style="width:${width}%"></div>
-      <span class="progress-label">${escapeHtml(label)}</span>
-    </div>
-  `;
-}
-
-function renderProof(todo) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "proof-row";
-
-  if (todo.proof) {
-    const isImage = (todo.proof.type || "").startsWith("image/");
-    const view = document.createElement("button");
-    view.type = "button";
-    view.className = "proof-view";
-    view.title = `Lihat bukti: ${todo.proof.name}`;
-    view.innerHTML = isImage
-      ? `<img src="${todo.proof.dataUrl}" alt="bukti"><span>${escapeHtml(todo.proof.name)}</span>`
-      : `<span class="proof-icon">📎</span><span>${escapeHtml(todo.proof.name)}</span>`;
-    view.addEventListener("click", () => openProof(todo));
-
-    const size = document.createElement("span");
-    size.className = "proof-size";
-    size.textContent = formatBytes(todo.proof.size);
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "proof-remove";
-    remove.title = "Hapus bukti";
-    remove.textContent = "✕";
-    remove.addEventListener("click", () => removeProof(todo.id));
-
-    wrapper.append(view, size, remove);
-  } else {
-    const label = document.createElement("label");
-    label.className = "btn-upload";
-    label.title = todo.completed
-      ? "Upload bukti penyelesaian"
-      : "Upload bukti (opsional)";
-    label.innerHTML = "📎 Upload Bukti";
-
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt";
-    fileInput.hidden = true;
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (file) attachProof(todo.id, file);
-    });
-
-    label.appendChild(fileInput);
-    wrapper.appendChild(label);
-  }
-  return wrapper;
-}
-
-function renderTodoItem(todo, query) {
-  const li = document.createElement("li");
-  li.className = "todo-item" + (todo.completed ? " completed" : "");
-  li.dataset.id = todo.id;
-
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = todo.completed;
-  checkbox.addEventListener("change", () => toggleTodo(todo.id));
-
-  const body = document.createElement("div");
-  body.className = "todo-body";
-  body.innerHTML = `
-    <span class="todo-text">${highlight(todo.text, query)}</span>
-    ${renderMeta(todo, query)}
-    ${renderProgress(todo)}
-  `;
-  body.appendChild(renderProof(todo));
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.className = "btn-delete";
-  deleteBtn.setAttribute("aria-label", "Hapus tugas");
-  deleteBtn.textContent = "✕";
-  deleteBtn.addEventListener("click", () => deleteTodo(todo.id));
-
-  li.append(checkbox, body, deleteBtn);
-  return li;
-}
-
-function render() {
-  const filtered = getFilteredTodos();
-  list.innerHTML = "";
-
-  if (filtered.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "empty-state";
-    if (todos.length === 0) {
-      empty.textContent = "Belum ada tugas. Tambahkan tugas pertamamu! 🚀";
-    } else if (searchQuery) {
-      empty.textContent = `Tidak ada tugas yang cocok dengan "${searchQuery}"`;
-    } else {
-      empty.textContent = "Tidak ada tugas pada filter ini.";
-    }
-    list.appendChild(empty);
-  } else {
-    const query = searchQuery.trim();
-    filtered.forEach((todo) => list.appendChild(renderTodoItem(todo, query)));
-  }
-
-  const active = todos.filter((t) => !t.completed).length;
-  itemsCount.textContent = `${active} tugas aktif · ${todos.length} total`;
-}
-
-function getAvailableMonths() {
-  const set = new Set(todos.map(getMonthKey));
-  return [...set].sort().reverse();
-}
-
-function renderHistory() {
-  const months = getAvailableMonths();
-  historyMonthSelect.innerHTML = "";
-
-  if (months.length === 0) {
-    const opt = document.createElement("option");
-    opt.textContent = "Tidak ada data";
-    historyMonthSelect.appendChild(opt);
-    historyList.innerHTML =
-      '<li class="empty-state">Belum ada tugas untuk ditampilkan di histori.</li>';
-    historySummary.innerHTML = "";
+  const tbody = document.getElementById('ks-tbody');
+  const empty = document.getElementById('ks-empty');
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
     return;
   }
+  empty.classList.add('hidden');
+  tbody.innerHTML = filtered.map(k => {
+    const m = findMitra(k.mitraId);
+    return `<tr>
+      <td><strong>${escapeHtml(k.nomor)}</strong></td>
+      <td>${jenisBadge(k.jenis)}</td>
+      <td>${escapeHtml(k.judul)}</td>
+      <td>${escapeHtml(m ? m.nama : '-')}</td>
+      <td>${fmtDate(k.mulai)} <small style="color:#9ca3af">s.d.</small> ${fmtDate(k.selesai)}</td>
+      <td>${statusBadge(k.status)}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" data-edit-ks="${k.id}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-del-ks="${k.id}">Hapus</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-  if (!months.includes(selectedMonth)) {
-    selectedMonth = months[0];
+function openKerjasamaModal(id) {
+  populateMitraSelect();
+  const modal = document.getElementById('modal-kerjasama');
+  const title = document.getElementById('mk-title');
+  if (id) {
+    const k = getKerjasama().find(x => x.id === id);
+    if (!k) return;
+    title.textContent = 'Edit Kerjasama';
+    document.getElementById('ks-id').value = k.id;
+    document.getElementById('ks-nomor').value = k.nomor;
+    document.getElementById('ks-jenis').value = k.jenis;
+    document.getElementById('ks-judul').value = k.judul;
+    document.getElementById('ks-mitra').value = k.mitraId;
+    document.getElementById('ks-mulai').value = k.mulai;
+    document.getElementById('ks-selesai').value = k.selesai;
+    document.getElementById('ks-lingkup').value = k.lingkup || '';
+    document.getElementById('ks-status').value = k.status;
+    document.getElementById('ks-pj').value = k.pj || '';
+  } else {
+    title.textContent = 'Tambah Kerjasama';
+    document.getElementById('form-kerjasama').reset();
+    document.getElementById('ks-id').value = '';
   }
-
-  months.forEach((key) => {
-    const opt = document.createElement("option");
-    opt.value = key;
-    opt.textContent = formatMonthKey(key);
-    if (key === selectedMonth) opt.selected = true;
-    historyMonthSelect.appendChild(opt);
-  });
-
-  const monthTodos = todos
-    .filter((t) => getMonthKey(t) === selectedMonth)
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-
-  const done = monthTodos.filter((t) => t.completed).length;
-  const active = monthTodos.length - done;
-  const percent = monthTodos.length
-    ? Math.round((done / monthTodos.length) * 100)
-    : 0;
-
-  historySummary.innerHTML = `
-    <div class="stat-card">
-      <div class="stat-value">${monthTodos.length}</div>
-      <div class="stat-label">Total Tugas</div>
-    </div>
-    <div class="stat-card stat-done">
-      <div class="stat-value">${done}</div>
-      <div class="stat-label">Selesai</div>
-    </div>
-    <div class="stat-card stat-active">
-      <div class="stat-value">${active}</div>
-      <div class="stat-label">Belum Selesai</div>
-    </div>
-    <div class="stat-card stat-percent">
-      <div class="stat-value">${percent}%</div>
-      <div class="stat-label">Progress</div>
-    </div>
-  `;
-
-  historyList.innerHTML = "";
-  if (monthTodos.length === 0) {
-    historyList.innerHTML =
-      '<li class="empty-state">Tidak ada tugas di bulan ini.</li>';
-    return;
-  }
-  monthTodos.forEach((todo) => historyList.appendChild(renderTodoItem(todo, "")));
+  modal.classList.remove('hidden');
 }
 
-function renderAll() {
-  render();
-  renderHistory();
+function populateMitraSelect() {
+  const sel = document.getElementById('ks-mitra');
+  const items = getMitra();
+  sel.innerHTML = '<option value="">-- Pilih Mitra --</option>' +
+    items.map(m => `<option value="${m.id}">${escapeHtml(m.nama)}</option>`).join('');
 }
 
-function renderPrintProofCell(proof) {
-  if (!proof) return "-";
-  const isImage = (proof.type || "").startsWith("image/");
-  if (isImage) {
-    return `<img class="print-proof-img" src="${proof.dataUrl}" alt="bukti"><div class="print-proof-name">${escapeHtml(proof.name)}</div>`;
-  }
-  return `📎 ${escapeHtml(proof.name)}`;
-}
-
-function buildPrintTable(items, title) {
-  const rows = items
-    .map(
-      (t, i) => `
-      <tr class="${t.completed ? "print-done" : ""}">
-        <td>${i + 1}</td>
-        <td>${t.completed ? "☑" : "☐"}</td>
-        <td>${escapeHtml(t.text)}</td>
-        <td>${escapeHtml(t.date ? formatDate(t.date) : "-")}</td>
-        <td>${escapeHtml(t.assignee || "-")}</td>
-        <td>${escapeHtml(DURATION_LABELS[t.duration] || "-")}</td>
-        <td class="print-proof-cell">${renderPrintProofCell(t.proof)}</td>
-      </tr>`,
-    )
-    .join("");
-
-  const done = items.filter((t) => t.completed).length;
-  const withProof = items.filter((t) => t.proof).length;
-  const today = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  return `
-    <div class="print-sheet">
-      <h1>${escapeHtml(title)}</h1>
-      <p class="print-meta">
-        Total: <strong>${items.length}</strong> tugas ·
-        Selesai: <strong>${done}</strong> ·
-        Belum: <strong>${items.length - done}</strong> ·
-        Dengan bukti: <strong>${withProof}</strong><br>
-        Dicetak: ${today}
-      </p>
-      <table class="print-table">
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Status</th>
-            <th>Tugas</th>
-            <th>Tanggal</th>
-            <th>Pelaksana</th>
-            <th>Kategori</th>
-            <th>Bukti</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || '<tr><td colspan="7" style="text-align:center">Tidak ada data</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function printItems(items, title) {
-  printRoot.innerHTML = buildPrintTable(items, title);
-  document.body.classList.add("printing");
-  const cleanup = () => {
-    document.body.classList.remove("printing");
-    printRoot.innerHTML = "";
-    window.removeEventListener("afterprint", cleanup);
-  };
-  window.addEventListener("afterprint", cleanup);
-  setTimeout(() => window.print(), 50);
-}
-
-form.addEventListener("submit", (e) => {
+function saveKerjasama(e) {
   e.preventDefault();
-  addTodo({
-    text: input.value,
-    date: dateInput.value,
-    assignee: assigneeInput.value,
-    duration: durationInput.value,
+  const id = document.getElementById('ks-id').value;
+  const data = {
+    nomor: document.getElementById('ks-nomor').value.trim(),
+    jenis: document.getElementById('ks-jenis').value,
+    judul: document.getElementById('ks-judul').value.trim(),
+    mitraId: document.getElementById('ks-mitra').value,
+    mulai: document.getElementById('ks-mulai').value,
+    selesai: document.getElementById('ks-selesai').value,
+    lingkup: document.getElementById('ks-lingkup').value.trim(),
+    status: document.getElementById('ks-status').value,
+    pj: document.getElementById('ks-pj').value.trim(),
+  };
+  if (!data.mitraId) { toast('Pilih mitra terlebih dahulu', 'error'); return; }
+  if (data.selesai < data.mulai) { toast('Tanggal selesai tidak boleh sebelum tanggal mulai', 'error'); return; }
+
+  const all = getKerjasama();
+  if (id) {
+    const idx = all.findIndex(x => x.id === id);
+    if (idx >= 0) all[idx] = { ...all[idx], ...data };
+    toast('Kerjasama diperbarui');
+  } else {
+    all.push({ id: uid('k'), ...data });
+    toast('Kerjasama ditambahkan');
+  }
+  save(STORAGE_KEYS.kerjasama, all);
+  document.getElementById('modal-kerjasama').classList.add('hidden');
+  renderKerjasama();
+}
+
+function deleteKerjasama(id) {
+  if (!confirm('Hapus data kerjasama ini?')) return;
+  const all = getKerjasama().filter(k => k.id !== id);
+  save(STORAGE_KEYS.kerjasama, all);
+  toast('Kerjasama dihapus');
+  renderKerjasama();
+}
+
+// ----- Mitra -----
+function renderMitra() {
+  const all = getMitra();
+  const { q, jenis } = state.mtFilter;
+  const qLower = q.toLowerCase();
+  const filtered = all.filter(m => {
+    const matchQ = !q || m.nama.toLowerCase().includes(qLower) ||
+      (m.email || '').toLowerCase().includes(qLower);
+    const matchJ = !jenis || m.jenis === jenis;
+    return matchQ && matchJ;
   });
-  input.value = "";
-  dateInput.value = "";
-  assigneeInput.value = "";
-  durationInput.value = "";
-  input.focus();
-});
 
-searchInput.addEventListener("input", (e) => {
-  searchQuery = e.target.value;
-  render();
-});
+  const tbody = document.getElementById('mt-tbody');
+  const empty = document.getElementById('mt-empty');
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  tbody.innerHTML = filtered.map(m => `<tr>
+    <td><strong>${escapeHtml(m.nama)}</strong></td>
+    <td>${escapeHtml(m.jenis)}</td>
+    <td>${escapeHtml(m.kontak || '-')}</td>
+    <td>${escapeHtml(m.email || '-')}</td>
+    <td>${escapeHtml(m.alamat || '-')}</td>
+    <td>
+      <button class="btn btn-ghost btn-sm" data-edit-mt="${m.id}">Edit</button>
+      <button class="btn btn-danger btn-sm" data-del-mt="${m.id}">Hapus</button>
+    </td>
+  </tr>`).join('');
+}
 
-filterBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    filterBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    render();
+function openMitraModal(id) {
+  const modal = document.getElementById('modal-mitra');
+  const title = document.getElementById('mm-title');
+  if (id) {
+    const m = getMitra().find(x => x.id === id);
+    if (!m) return;
+    title.textContent = 'Edit Mitra';
+    document.getElementById('mt-id').value = m.id;
+    document.getElementById('mt-nama').value = m.nama;
+    document.getElementById('mt-jenis').value = m.jenis;
+    document.getElementById('mt-kontak').value = m.kontak || '';
+    document.getElementById('mt-email').value = m.email || '';
+    document.getElementById('mt-alamat').value = m.alamat || '';
+  } else {
+    title.textContent = 'Tambah Mitra';
+    document.getElementById('form-mitra').reset();
+    document.getElementById('mt-id').value = '';
+  }
+  modal.classList.remove('hidden');
+}
+
+function saveMitra(e) {
+  e.preventDefault();
+  const id = document.getElementById('mt-id').value;
+  const data = {
+    nama: document.getElementById('mt-nama').value.trim(),
+    jenis: document.getElementById('mt-jenis').value,
+    kontak: document.getElementById('mt-kontak').value.trim(),
+    email: document.getElementById('mt-email').value.trim(),
+    alamat: document.getElementById('mt-alamat').value.trim(),
+  };
+  const all = getMitra();
+  if (id) {
+    const idx = all.findIndex(x => x.id === id);
+    if (idx >= 0) all[idx] = { ...all[idx], ...data };
+    toast('Mitra diperbarui');
+  } else {
+    all.push({ id: uid('m'), ...data });
+    toast('Mitra ditambahkan');
+  }
+  save(STORAGE_KEYS.mitra, all);
+  document.getElementById('modal-mitra').classList.add('hidden');
+  renderMitra();
+}
+
+function deleteMitra(id) {
+  const linked = getKerjasama().some(k => k.mitraId === id);
+  if (linked) { toast('Mitra masih dipakai pada data kerjasama', 'error'); return; }
+  if (!confirm('Hapus data mitra ini?')) return;
+  const all = getMitra().filter(m => m.id !== id);
+  save(STORAGE_KEYS.mitra, all);
+  toast('Mitra dihapus');
+  renderMitra();
+}
+
+// ----- Init -----
+function bindEvents() {
+  document.getElementById('login-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const u = document.getElementById('login-username').value.trim();
+    const p = document.getElementById('login-password').value;
+    const err = document.getElementById('login-error');
+    if (tryLogin(u, p)) {
+      err.classList.add('hidden');
+      showApp();
+    } else {
+      err.textContent = 'Username atau password salah.';
+      err.classList.remove('hidden');
+    }
   });
-});
 
-clearCompletedBtn.addEventListener("click", clearCompleted);
+  document.getElementById('btn-logout').addEventListener('click', logout);
 
-tabBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    tabBtns.forEach((b) => b.classList.remove("active"));
-    tabPanels.forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-    if (btn.dataset.tab === "history") renderHistory();
+  document.querySelectorAll('.nav-link').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      navigate(a.dataset.route);
+    });
   });
-});
 
-historyMonthSelect.addEventListener("change", (e) => {
-  selectedMonth = e.target.value;
-  renderHistory();
-});
+  // Kerjasama filters
+  document.getElementById('ks-search').addEventListener('input', e => {
+    state.ksFilter.q = e.target.value; renderKerjasama();
+  });
+  document.getElementById('ks-filter-jenis').addEventListener('change', e => {
+    state.ksFilter.jenis = e.target.value; renderKerjasama();
+  });
+  document.getElementById('ks-filter-status').addEventListener('change', e => {
+    state.ksFilter.status = e.target.value; renderKerjasama();
+  });
+  document.getElementById('btn-new-kerjasama').addEventListener('click', () => openKerjasamaModal());
+  document.getElementById('form-kerjasama').addEventListener('submit', saveKerjasama);
+  document.getElementById('ks-tbody').addEventListener('click', e => {
+    const ed = e.target.closest('[data-edit-ks]');
+    const dl = e.target.closest('[data-del-ks]');
+    if (ed) openKerjasamaModal(ed.dataset.editKs);
+    if (dl) deleteKerjasama(dl.dataset.delKs);
+  });
 
-printListBtn.addEventListener("click", () => {
-  printItems(getFilteredTodos(), "Daftar Tugas");
-});
+  // Mitra filters
+  document.getElementById('mt-search').addEventListener('input', e => {
+    state.mtFilter.q = e.target.value; renderMitra();
+  });
+  document.getElementById('mt-filter-jenis').addEventListener('change', e => {
+    state.mtFilter.jenis = e.target.value; renderMitra();
+  });
+  document.getElementById('btn-new-mitra').addEventListener('click', () => openMitraModal());
+  document.getElementById('form-mitra').addEventListener('submit', saveMitra);
+  document.getElementById('mt-tbody').addEventListener('click', e => {
+    const ed = e.target.closest('[data-edit-mt]');
+    const dl = e.target.closest('[data-del-mt]');
+    if (ed) openMitraModal(ed.dataset.editMt);
+    if (dl) deleteMitra(dl.dataset.delMt);
+  });
 
-printHistoryBtn.addEventListener("click", () => {
-  const monthTodos = todos
-    .filter((t) => getMonthKey(t) === selectedMonth)
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  printItems(
-    monthTodos,
-    selectedMonth
-      ? `Histori Tugas — ${formatMonthKey(selectedMonth)}`
-      : "Histori Tugas",
-  );
-});
+  // Modal close
+  document.querySelectorAll('[data-close]').forEach(b => {
+    b.addEventListener('click', () => {
+      b.closest('.modal').classList.add('hidden');
+    });
+  });
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', e => {
+      if (e.target === m) m.classList.add('hidden');
+    });
+  });
 
-renderAll();
+  // Hash routing
+  window.addEventListener('hashchange', () => {
+    if (state.user) navigate(location.hash.replace('#','') || 'dashboard');
+  });
+}
 
-setInterval(() => {
-  const hasLive = todos.some((t) => !t.completed && DURATION_MS[t.duration]);
-  if (hasLive) render();
-}, 60 * 1000);
+function init() {
+  document.getElementById('year').textContent = new Date().getFullYear();
+  seedIfEmpty();
+  bindEvents();
+  const session = load(STORAGE_KEYS.session, null);
+  if (session) {
+    state.user = session;
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
